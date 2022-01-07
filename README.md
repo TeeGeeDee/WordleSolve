@@ -1,6 +1,17 @@
 # WordleSolve
 Simple solver for the word game Worlde https://www.powerlanguage.co.uk/wordle/
 
+## Algorithm
+The algorithm is heuristic-based, creating a score for each possible word guess.
+Given a list of valid guesses (at the start this is all 5-letter words, later this is reduced by constraints of outputs of previous guesses), we can score
+each word by
+* For each letter (that isn't already 🟩), the frequency of the letter in the same position among valid words (proxy for "probability of getting 🟩")
+* For each letter (that isn't already 🟩), the frequency of the letter in all non-🟩 positions (proxy for "probability of getting 🟨)
+    * This is divided by the number of non-🟩 letters, since 🟨 is less useful than 🟩 (and less useful the more letters remaining)
+* As long as we're early enough in the same that 🟨 are useful, multiply the sum of the above by the number of unique non-🟩 letters (since duplicate 🟨 are less useful)
+* Finally, ties are broken by the word appearance frequency in Project Gutenberg books
+
+# Interface
 ## Run a solver for a given answer
 Sample output of: `julia wordle.jl answer=final`
 
@@ -73,17 +84,7 @@ Please provide guess: slump\
 🟩🟩⬜🟩⬜\
 🟩🟩🟩🟩🟩
 
-## Algorithm
-The algorithm is heuristic-based, creating a score for each possible word guess.
-Given a list of valid guesses (at the start this is all 5-letter words, later this is reduced by constraints of outputs of previous guesses), we can score
-each word by
-* For each letter (that isn't already 🟩), the frequency of the letter in the same position among valid words (proxy for "probability of getting 🟩")
-* For each letter (that isn't already 🟩), the frequency of the letter in all non-🟩 positions (proxy for "probability of getting 🟨)
-    * This is divided by the number of non-🟩 letters, since 🟨 is less useful than 🟩 (and less useful the more letters remaining)
-* As long as we're early enough in the same that 🟨 are useful, multiply the sum of the above by the number of unique non-🟩 letters (since duplicate 🟨 are less useful)
-* Finally, ties are broken by the word appearance frequency in Project Gutenberg books
-
-## Ideas for improvement
+# Ideas for improvement
 * For every word pair we can calculate the game output. Then for every possible answer word we can calculate the number of words that correspond to each output, for every possible guess.
 * We can choose a loss-function (e.g. minimax) and choose the best guess, averaging over all possible answers
 * This is a big problem, so probably needs some mote-carlo or something
