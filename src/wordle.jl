@@ -17,19 +17,19 @@ end
 function playwordle(answer::String;interactive::Bool=false,withhelp::Bool=false)::Int
     @assert length(answer)==WORD_LENGTH;
     @assert all(islowercase(c) for c in answer);
-    println("LET'S PLAY WORDLE"* (interactive ? "" : " (ANSWER IS \"$answer\")")*"\n");
+    println("LET'S PLAY WORDLE"* (interactive ? "" : " (ANSWER IS \"$answer\")"));
     gamestate = GameState();
     output,go = fill(⬜,WORD_LENGTH),0;
     outputall = Vector{Vector{Output}}();
     while !all(output.==🟩)
         go += 1;
-        println("\n ****** Go $go: ******");
+        println("\n ****** Go $go ******");
         if !interactive || withhelp
             guess = nextguess(gamestate);
-            println("\n            *** Computer guess $go = \"$guess\" ***\n");
+            println("            *** Computer guess $go = \"$guess\" ***");
         end
         if interactive
-            print("Please provide guess:")
+            print("Please provide guess: ")
             guess = readline();
         end
         output = simulatewordle(guess,answer);
@@ -71,9 +71,7 @@ function nextguess(gamestate::GameState)::String
         end
         push!(letterfreq,acc);
         push!(letterfreqtables,sort(DataFrame(letter=collect(keys(acc)),freq=collect(values(acc))),:freq,rev=true));
-        println("Position $i most frequent letters:");
-        println(join(["$l = $s" for (l,s) in zip(first(letterfreqtables[i],5).letter,first(letterfreqtables[i],5).freq)],", "));
-        println("");
+        println("Position $i most frequent letters: "*join(["$l = $s" for (l,s) in zip(first(letterfreqtables[i],5).letter,first(letterfreqtables[i],5).freq)],", "));
     end
     wordscores = DataFrame(word=gamestate.words,wordfreq=length(gamestate.words):-1:1);
     wordscores.score .= 0;
