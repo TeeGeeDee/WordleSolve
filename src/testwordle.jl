@@ -8,6 +8,12 @@ include("wordle.jl");
 @test simulatewordle("panel","banal")==[⬜, 🟩, 🟩, ⬜, 🟩];
 @test simulatewordle("banal","banal")==[🟩, 🟩, 🟩, 🟩, 🟩];
 
-@test playwordle("banal",withhelp=false)<=6;
-@test playwordle("tiger",withhelp=false)<=6;
-@test playwordle("slump",withhelp=false)<=6;
+# learned of undocumented (but sensible) behaviour regarding 🟨
+@test simulatewordle("areas","crank")==[🟨, 🟩, ⬜, ⬜, ⬜];
+@test simulatewordle("crack","crank")==[🟩, 🟩, 🟩, ⬜, 🟩];
+
+for algo in [ExpectedHits(false); EntropyMin(false)]
+    @test playwordle("banal",withhelp=false,algo=algo)<=6;
+    @test playwordle("tiger",withhelp=false,algo=algo)<=6;
+    @test playwordle("slump",withhelp=false,algo=algo)<=6;
+end
