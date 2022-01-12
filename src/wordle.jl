@@ -11,6 +11,7 @@ const WordList = Vector{String};
 abstract type GreedyAlgo end
 struct ExpectedHits <: GreedyAlgo end
 struct EntropyMax   <: GreedyAlgo end
+struct MiniMax   <: GreedyAlgo end
 struct MostPopular  <: GreedyAlgo end
 
 function playwordle(answer::String;interactive::Bool=false,withhelp::Bool=false,algo::GreedyAlgo=EntropyMax(),verbose::Int=1)::Int
@@ -118,6 +119,31 @@ end
     guess = entropiesdf.guess[1];
     if printworkings
         println("Guess with highest entropy of distribution of answers across puzzle outputs is \"$guess\":");
+        for (output,count) in allacc[guess]
+            println("$(reduce(*,string.(output))) => $count");
+        end
+    end
+    return guess
+end
+
+@memoize Dict function nextguess(algo::MiniMax,words::WordList;printworkings::Bool=false)::String
+    allacc = Dict{String,Accumulator{Vector{Output}, Int64}}();
+    for guess in words
+        allacc[guess] = Accumulator{Vector{Output},Int}();
+        for answer in words
+            inc!(allacc[guess],simulatewordle(guess,answer));
+        end
+    end
+
+    maxgrpsize = Dict(w=>maximum(values(v)) for (w,v) in allacc);
+    maxgrpsizedf = DataFrame(guess=collect(keys(maxgrpsize)),maxgroupsize=collect(values(maxgrpsize)));
+    popularitydf = DataFrame(guess=words,popularity=1:length(words)); # tie-breaker
+    maxgrpsizedf = innerjoin(maxgrpsizedf,popularitydf,on = :guess);
+    maxgrpsizedf = sort(maxgrpsizedf,[:maxgroupsize,:popularity]);
+    guess = maxgrpsizedf.guess[1];
+    if printworkings
+        println("Guess with the smallest largest group size of distribution of answers \
+        across puzzle outputs is \"$guess\", with largest group size = $(maxgrpsizedf.maxgroupsize[1])");
         for (output,count) in allacc[guess]
             println("$(reduce(*,string.(output))) => $count");
         end

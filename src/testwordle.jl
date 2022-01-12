@@ -12,7 +12,7 @@ include("wordle.jl");
 @test simulatewordle("areas","crank")==[🟨, 🟩, ⬜, ⬜, ⬜];
 @test simulatewordle("crack","crank")==[🟩, 🟩, 🟩, ⬜, 🟩];
 
-for algo in [ExpectedHits(); EntropyMax(); MostPopular()]
+for algo in [ExpectedHits(); EntropyMax(); MiniMax(); MostPopular()]
     @test playwordle("banal",withhelp=false,algo=algo,verbose=0)<=6;
     @test playwordle("tiger",withhelp=false,algo=algo,verbose=0)<=6;
     @test playwordle("slump",withhelp=false,algo=algo,verbose=0)<=6;

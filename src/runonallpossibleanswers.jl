@@ -5,6 +5,8 @@ allwords = getwordlist();
 numguessesmostpopular  = Dict{String,Int}(answer=>playwordle(answer,algo=MostPopular(),verbose=0)  for answer in allwords);
 numguessesexpectedhits = Dict{String,Int}(answer=>playwordle(answer,algo=ExpectedHits(),verbose=0) for answer in allwords);
 numguessesEntropyMax   = Dict{String,Int}(answer=>playwordle(answer,algo=EntropyMax(),verbose=0)   for answer in allwords);
+numguessesMiniMax      = Dict{String,Int}(answer=>playwordle(answer,algo=MiniMax(),verbose=0)      for answer in allwords);
+
 
 # MostPopular results:
 results = Accumulator{Int,Int}();
@@ -83,3 +85,30 @@ display(resultsTb)
 meanguesses = round(sum(k*v for (k,v) in results)/sum(v for (k,v) in results),digits=2);
 println("\nMean number of guesses = $meanguesses");
 # 3.57
+
+# MiniMax results:
+results = Accumulator{Int,Int}();
+for (key,value) in numguessesMiniMax
+    inc!(results,value)
+end
+resultsTb = sort(DataFrame(numgoes=collect(keys(results)),frequency=collect(values(results))),:numgoes);
+println("MiniMax results:")
+display(resultsTb)
+#=
+ Row │ numgoes  frequency 
+     │ Int64    Int64     
+─────┼────────────────────
+   1 │       1          1
+   2 │       2        143
+   3 │       3       1043
+   4 │       4       1183
+   5 │       5        336
+   6 │       6         65
+   7 │       7         14
+   8 │       8          4
+   9 │       9          1
+  10 │      10          1
+=#
+meanguesses = round(sum(k*v for (k,v) in results)/sum(v for (k,v) in results),digits=2);
+println("\nMean number of guesses = $meanguesses");
+# 3.71
