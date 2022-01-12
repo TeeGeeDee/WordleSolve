@@ -28,7 +28,7 @@ each word by
 
 ### Entropy maximization
 
-Any guess is a map from all posible words to all possible (3^5=243) outputs. We wish the split to be as even as possible so that the output convays maximal information.
+Any guess is a map from all posible words to all possible (3^5=243) outputs (e.g. ⬜🟨⬜⬜⬜,🟨🟨⬜🟨⬜ ...). We wish the split to be as even as possible so that the output we observe will give us as much information as possible.
 We simply iterate this after filtering the word list to comply with all seen guess-output combinations.
 
 ### MiniMax
