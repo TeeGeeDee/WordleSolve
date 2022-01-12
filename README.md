@@ -1,7 +1,22 @@
 # WordleSolve
-Simple solver for the word game Worlde https://www.powerlanguage.co.uk/wordle/
+Solvers for the word game Worlde https://www.powerlanguage.co.uk/wordle/
 
-## Algorithm
+## Algorithms
+
+There are 4 greedy algorithms:
+* Word popularity (simple baseline)
+* Maximization of expectation of number of 🟩, plus number of 🟨 (deflated by their lesser worth)
+* Maximization of the entropy of the distribution of all anwsers to all outputs - we want an even distribution
+* Minimize the maximum number of possible answers that get mapped to the same output
+
+# Word popularity
+
+Simple baseline algorithm:
+* Restrict the word list to reconcile with all observed guess-output combinations
+* Guess the most frequently appearing word in Project Gutenberg books
+
+# 🟩 Exectation Maximization (letter frequency method)
+
 The algorithm is heuristic-based, creating a score for each possible word guess.
 Given a list of valid guesses (at the start this is all 5-letter words, later this is reduced by constraints of outputs of previous guesses), we can score
 each word by
@@ -11,8 +26,19 @@ each word by
 * As long as we're early enough in the same that 🟨 are useful, multiply the sum of the above by the number of unique non-🟩 letters (since duplicate 🟨 are less useful)
 * Finally, ties are broken by the word appearance frequency in Project Gutenberg books
 
+# Entropy maximization
+
+Any guess is a map from all posible words to all possible (3^5=243) outputs. We wish the split to be as even as possible so that the output convays maximal information.
+We simply iterate this after filtering the word list to comply with all seen guess-output combinations.
+
+# MiniMax
+
+Similar to above we calculate the mapping to all possible outputs, but this time we just minimize the size of the largest group. This is trying to control the worst-case scenario.
+
 # Interface
 ## Run a solver for a given answer
+
+## 🟩 Exectation Maximization (letter frequency method)
 Sample output of: `julia wordle.jl answer=final`
 
 LET'S PLAY WORDLE (ANSWER IS "final")
@@ -61,7 +87,97 @@ final (score=8), fugal (score=8)
 🟨🟨⬜🟨⬜\
 🟩🟩🟩🟩🟩
 
-## Play interactively
+## Word popularity algo
+
+playwordle("taken",algo=MostPopular(),verbose=2) \
+LET'S PLAY WORDLE (ANSWER IS "taken")
+
+ ****** Go 1 ****** \
+most popular word is: "which" \
+            *** Computer guess 1 = "which" *** \
+⬜⬜⬜⬜⬜
+
+ ****** Go 2 ****** \
+most popular word is: "about" \
+            *** Computer guess 2 = "about" *** \
+🟨⬜⬜⬜🟨
+
+ ****** Go 3 ****** \
+most popular word is: "taken" \
+            *** Computer guess 3 = "taken" *** \
+🟩🟩🟩🟩🟩 \
+🎉🍾🎊 DONE IN 3 goes! 👏 \
+⬜⬜⬜⬜⬜ \
+🟨⬜⬜⬜🟨 \
+🟩🟩🟩🟩🟩
+
+## Entropy maximizaiton algo
+
+playwordle("taken",algo=EntropyMax(),verbose=2) \
+LET'S PLAY WORDLE (ANSWER IS "taken")
+
+ ****** Go 1 ****** \
+Guess with highest entropy of distribution of answers across puzzle outputs is "tears": \
+🟩🟩🟩⬜⬜ => 1 \
+⬜🟩🟩🟩⬜ => 7 \
+⬜⬜🟨🟨⬜ => 64 \
+🟨⬜🟨⬜🟨 => 14 \
+⬜🟨🟩🟨🟨 => 1 \
+🟨⬜🟨⬜⬜ => 51 \
+⬜🟩⬜🟨⬜ => 32 \
+⬜🟨🟩⬜🟨 => 18 \
+⬜🟨⬜🟨⬜ => 134 \
+🟨🟩🟩🟨⬜ => 1 \
+🟩🟨🟨⬜⬜ => 5 \
+... \
+⬜🟩🟩⬜⬜ => 13 \
+⬜🟩⬜⬜🟩 => 19 \
+⬜🟨⬜🟩🟨 => 6 \
+🟩⬜⬜⬜🟩 => 6 \
+🟩⬜🟨⬜⬜ => 18 \
+⬜🟩⬜⬜🟨 => 15 \
+            *** Computer guess 1 = "tears" *** \
+🟩🟨🟨⬜⬜
+
+ ****** Go 2 ****** \
+Guess with highest entropy of distribution of answers across puzzle outputs is "taken": \
+🟩🟨🟨🟨⬜ => 1 \
+🟩🟩🟩🟩🟩 => 1 \
+🟩🟩⬜🟨⬜ => 1 \
+🟩🟨⬜🟨⬜ => 1 \
+🟩🟩⬜🟩⬜ => 1 \
+            *** Computer guess 2 = "taken" *** \
+🟩🟩🟩🟩🟩 \
+🎉🍾🎊 DONE IN 2 goes! 👏 \
+🟩🟨🟨⬜⬜ \
+🟩🟩🟩🟩🟩
+
+## MiniMax
+
+playwordle("taken",algo=MiniMax(),verbose=2) \
+LET'S PLAY WORDLE (ANSWER IS "taken")
+
+ ****** Go 1 ****** \
+Guess with the smallest largest group size of distribution of answers across puzzle outputs is "raise", with largest group size = 156 \
+            *** Computer guess 1 = "raise" *** \
+⬜🟩⬜⬜🟨
+
+ ****** Go 2 ****** \
+Guess with the smallest largest group size of distribution of answers across puzzle outputs is "cadet", with largest group size = 9 \
+            *** Computer guess 2 = "cadet" *** \
+⬜🟩⬜🟩🟨
+
+ ****** Go 3 ****** \
+Guess with the smallest largest group size of distribution of answers across puzzle outputs is "taken", with largest group size = 1 \
+            *** Computer guess 3 = "taken" *** \
+🟩🟩🟩🟩🟩 \
+🎉🍾🎊 DONE IN 3 goes! 👏 \
+⬜🟩⬜⬜🟨 \
+⬜🟩⬜🟩🟨 \
+🟩🟩🟩🟩🟩
+
+
+## Play manually, interactively
 Sample output of: `julia wordle.jl interactive answer=slump` (if answer not provided, it's chosen at random, weighed by frequency of appearance in books)
 
 LET'S PLAY WORDLE
