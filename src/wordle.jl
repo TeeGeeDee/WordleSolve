@@ -6,40 +6,26 @@ using Memoization
 
 @enum Output ⬜ 🟨 🟩;
 const WORD_LENGTH = 5;
-
-mutable struct GameState
-    greenmatches ::Set{Tuple{Int,Char}}
-    yellowmatches::Set{Tuple{Int,Char}}
-    grayletters  ::Set{Char}
-    words        ::Vector{String}
-    GameState() = new(Set{Tuple{Int,Char}}(),Set{Tuple{Int,Char}}(),Set{Char}(),getwordsfreqorder());
-end
+const WordList = Vector{String};
 
 abstract type GreedyAlgo end
-struct ExpectedHits <: GreedyAlgo
-    verbose::Bool
-    ExpectedHits() = new(true);
-    ExpectedHits(v) = new(v);
-end
-struct EntropyMin   <: GreedyAlgo    
-    verbose::Bool
-    EntropyMin() = new(true);
-    EntropyMin(v) = new(v);
-end
+struct ExpectedHits <: GreedyAlgo end
+struct EntropyMax   <: GreedyAlgo end
+struct MostPopular  <: GreedyAlgo end
 
-function playwordle(answer::String;interactive::Bool=false,withhelp::Bool=false,algo::GreedyAlgo=EntropyMin())::Int
+function playwordle(answer::String;interactive::Bool=false,withhelp::Bool=false,algo::GreedyAlgo=EntropyMax(),verbose::Int=1)::Int
     @assert length(answer)==WORD_LENGTH;
     @assert all(islowercase(c) for c in answer);
-    println("LET'S PLAY WORDLE"* (interactive ? "" : " (ANSWER IS \"$answer\")"));
-    gamestate = GameState();
+    if verbose>0 println("LET'S PLAY WORDLE"* (interactive ? "" : " (ANSWER IS \"$answer\")")); end
+    wordlist = getwordlist();
     output,go = fill(⬜,WORD_LENGTH),0;
     outputall = Vector{Vector{Output}}();
     while !all(output.==🟩)
         go += 1;
-        println("\n ****** Go $go ******");
+        if verbose>0 println("\n ****** Go $go ******"); end
         if !interactive || withhelp
-            guess = nextguess(algo,gamestate.words);
-            println("            *** Computer guess $go = \"$guess\" ***");
+            guess = nextguess(algo,wordlist,printworkings=verbose>1);
+            if verbose>0 println("            *** Computer guess $go = \"$guess\" ***"); end
         end
         if interactive
             print("Please provide guess: ")
@@ -47,15 +33,15 @@ function playwordle(answer::String;interactive::Bool=false,withhelp::Bool=false,
         end
         output = simulatewordle(guess,answer);
         push!(outputall,output);
-        println(reduce(*,string.(output)));
-        updategame!(gamestate,guess,output);
+        if verbose>0 || interactive println(reduce(*,string.(output))); end
+        wordlist = filterwordlist(wordlist,guess,output);
     end
-    println("🎉🍾🎊 DONE IN $go goes! 👏");
-    print(reduce(*,[reduce(*,string.(s))*"\n" for s in outputall]));
+    if verbose>0 println("🎉🍾🎊 DONE IN $go goes! 👏"); end
+    if verbose>0 print(reduce(*,[reduce(*,string.(s))*"\n" for s in outputall])); end
     return go
 end
 
-function filterwordlist(wordlist::Vector{String},guess::String,output::Vector{Output})::Vector{String}
+function filterwordlist(wordlist::WordList,guess::String,output::Vector{Output})::WordList
     yellowcounts = Accumulator{Char,Int}();
     greyletters = Set{Char}();
     for (i,(letter,out)) in enumerate(zip(guess,output))
@@ -76,20 +62,9 @@ function filterwordlist(wordlist::Vector{String},guess::String,output::Vector{Ou
     return wordlist
 end
 
-function updategame!(gamestate::GameState,guess::String,output::Vector{Output})
-    for (i,(letter,out)) in enumerate(zip(guess,output))
-        if     out==⬜ push!(gamestate.grayletters,letter);
-        elseif out==🟨 push!(gamestate.yellowmatches,(i,letter));
-        elseif out==🟩 push!(gamestate.greenmatches,(i,letter));
-        else error("Unknown output");
-        end
-    end
-    gamestate.words = filterwordlist(gamestate.words,guess,output);
-end
-
-@memoize Dict function nextguess(algo::ExpectedHits,words::Vector{String})::String
+@memoize Dict function nextguess(algo::ExpectedHits,words::WordList;printworkings::Bool=false)::String
     if length(words)==1
-        if algo.verbose println("only one word left: \"$(words[1])\""); end
+        if printworkings println("only one word left: \"$(words[1])\""); end
         return words[1]
     end
     greenmatches = [all(w[i]==words[1][i] for w in words) for i in 1:WORD_LENGTH];
@@ -102,7 +77,7 @@ end
         end
         push!(letterfreq,acc);
         push!(letterfreqtables,sort(DataFrame(letter=collect(keys(acc)),freq=collect(values(acc))),:freq,rev=true));
-        if algo.verbose println("Position $i most frequent letters: "*join(["$l = $s" for (l,s) in zip(first(letterfreqtables[i],5).letter,first(letterfreqtables[i],5).freq)],", ")); end
+        if printworkings println("Position $i most frequent letters: "*join(["$l = $s" for (l,s) in zip(first(letterfreqtables[i],5).letter,first(letterfreqtables[i],5).freq)],", ")); end
     end
     wordscores = DataFrame(word=words,wordfreq=length(words):-1:1);
     wordscores.score .= 0;
@@ -116,12 +91,12 @@ end
         end
     end
     wordscores = sort(wordscores,[:score,:wordfreq],rev=true);
-    if algo.verbose println("Next guess candidates:"); end
-    if algo.verbose println(join(["$w (score=$s)" for (w,s) in zip(first(wordscores,5).word,first(wordscores,5).score)],", ")); end
+    if printworkings println("Next guess candidates:"); end
+    if printworkings println(join(["$w (score=$s)" for (w,s) in zip(first(wordscores,5).word,first(wordscores,5).score)],", ")); end
     return wordscores.word[1]
 end
 
-@memoize Dict function nextguess(algo::EntropyMin,words::Vector{String})::String
+@memoize Dict function nextguess(algo::EntropyMax,words::WordList;printworkings::Bool=false)::String
     allacc = Dict{String,Accumulator{Vector{Output}, Int64}}();
     for guess in words
         allacc[guess] = Accumulator{Vector{Output},Int}();
@@ -137,8 +112,22 @@ end
 
     entropies = Dict(w=>entropy(allacc[w]) for w in keys(allacc));
     entropiesdf = DataFrame(guess=collect(keys(entropies)),entropy=collect(values(entropies)));
-    entropiesdf = sort(entropiesdf,:entropy,rev=true);
-    return entropiesdf.guess[1]
+    popularitydf = DataFrame(guess=words,popularity=reverse(1:length(words))); # tie-breaker
+    entropiesdf = innerjoin(entropiesdf,popularitydf,on = :guess);
+    entropiesdf = sort(entropiesdf,[:entropy,:popularity],rev=true);
+    guess = entropiesdf.guess[1];
+    if printworkings
+        println("Guess with highest entropy of distribution of answers across puzzle outputs is \"$guess\":");
+        for (output,count) in allacc[guess]
+            println("$(reduce(*,string.(output))) => $count");
+        end
+    end
+    return guess
+end
+
+function nextguess(algo::MostPopular,words::WordList;printworkings::Bool=false)::String
+    if printworkings println("most popular word is: \"$(words[1])\""); end
+    return words[1] # relies on popularity-ordering of the WordList
 end
 
 function simulatewordle(guessword::String,answer::String)::Vector{Output}
@@ -165,9 +154,9 @@ function simulatewordle(guessword::String,answer::String)::Vector{Output}
     return out
 end
 
-@memoize function getwordsfreqorder()::Vector{String}
+@memoize function getwordlist()::WordList
     # from PG https://en.wiktionary.org/wiki/Wiktionary:Frequency_lists#English
-    words = Vector{String}();
+    words = WordList();
     for docid = 1:4
         for line in readlines("../data/WikitionaryPG$docid.txt")
             m = match(r"\[\[.*\]\]",line);
@@ -186,7 +175,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         s = args[findfirst(contains(s,"answer=") for s in args)];
         answer = s[8:end];
     else
-        words = getwordsfreqorder();
+        words = getwordlist();
         answer = sample(words, Weights(reverse(1:length(words)))); # sample more frequent words more
     end
     playwordle(answer,interactive=("interactive" in args),withhelp=("help" in args));
