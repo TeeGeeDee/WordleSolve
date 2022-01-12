@@ -119,9 +119,6 @@ end
     guess = entropiesdf.guess[1];
     if printworkings
         println("Guess with highest entropy of distribution of answers across puzzle outputs is \"$guess\":");
-        for (output,count) in allacc[guess]
-            println("$(reduce(*,string.(output))) => $count");
-        end
     end
     return guess
 end
