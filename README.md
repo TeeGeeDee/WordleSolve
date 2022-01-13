@@ -200,5 +200,12 @@ Please provide guess: slump\
 🟩🟩⬜🟩⬜\
 🟩🟩🟩🟩🟩
 
+# Results
+
+We can run each of these algorithms on every word in our word list (as the answer) to summarise the performance.
+The best is EntropyMax, which on average wins in 3.57 goes, gets within 4 goes 90% of the time, and within 6 goes 99.5% of the time.
+
+![Performance plot](/plots/algoperformance.png)
+
 # Ideas for improvement
 * The above is greedy, and sub-optimal. Can extend further using dynamic programming/RL
