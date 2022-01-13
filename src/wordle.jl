@@ -10,9 +10,12 @@ const WordList = Vector{String};
 
 abstract type GreedyAlgo end
 struct ExpectedHits <: GreedyAlgo end
-struct EntropyMax   <: GreedyAlgo end
-struct MiniMax   <: GreedyAlgo end
+abstract type GreedyEntropy <: GreedyAlgo end
+struct EntropyMax   <: GreedyEntropy end
+struct EntropyMin   <: GreedyEntropy end # purposefully bad
+struct MiniMax      <: GreedyAlgo end
 struct MostPopular  <: GreedyAlgo end
+
 
 function playwordle(answer::String;interactive::Bool=false,withhelp::Bool=false,algo::GreedyAlgo=EntropyMax(),verbose::Int=1)::Int
     @assert length(answer)==WORD_LENGTH;
@@ -97,7 +100,7 @@ end
     return wordscores.word[1]
 end
 
-@memoize Dict function nextguess(algo::EntropyMax,words::WordList;printworkings::Bool=false)::String
+@memoize Dict function nextguess(algo::GreedyEntropy,words::WordList;printworkings::Bool=false)::String
     allacc = Dict{String,Accumulator{Vector{Output}, Int64}}();
     for guess in words
         allacc[guess] = Accumulator{Vector{Output},Int}();
@@ -116,9 +119,12 @@ end
     popularitydf = DataFrame(guess=words,popularity=reverse(1:length(words))); # tie-breaker
     entropiesdf = innerjoin(entropiesdf,popularitydf,on = :guess);
     entropiesdf = sort(entropiesdf,[:entropy,:popularity],rev=true);
-    guess = entropiesdf.guess[1];
+    guess = isa(algo,EntropyMax) ? entropiesdf.guess[1] : entropiesdf.guess[end];
     if printworkings
         println("Guess with highest entropy of distribution of answers across puzzle outputs is \"$guess\":");
+        for (output,count) in allacc[guess]
+            println("$(reduce(*,string.(output))) => $count");
+        end
     end
     return guess
 end
